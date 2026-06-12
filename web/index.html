@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProfitProbe · Futures Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0e0f; --panel:#10171a; --panel2:#0d1316; --line:#1d2a2f;
+    --txt:#d6e4e5; --dim:#6b8389; --green:#00e08a; --red:#ff5470;
+    --amber:#ffc24b; --cyan:#3dd7d0; --glow:0 0 0 1px var(--line),0 8px 40px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',monospace;
+    font-size:13px;line-height:1.5;
+    background-image:radial-gradient(circle at 80% -10%,rgba(0,224,138,.06),transparent 40%),
+      radial-gradient(circle at 0% 100%,rgba(61,215,208,.05),transparent 40%);
+    min-height:100vh}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px}
+  header{display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.5px}
+  h1 .dot{color:var(--green)}
+  .sub{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:2px}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:18px;box-shadow:var(--glow)}
+  .card h2{font-family:'Space Grotesk',sans-serif;font-size:13px;text-transform:uppercase;
+    letter-spacing:1.5px;color:var(--cyan);margin-bottom:14px;display:flex;
+    align-items:center;gap:8px}
+  .card h2::before{content:"";width:6px;height:6px;background:var(--cyan);border-radius:50%;
+    box-shadow:0 0 8px var(--cyan)}
+  label{display:block;color:var(--dim);font-size:11px;text-transform:uppercase;
+    letter-spacing:.5px;margin:12px 0 4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--txt);font-family:inherit;font-size:13px;padding:8px 10px;border-radius:6px}
+  input:focus,select:focus{outline:none;border-color:var(--green);
+    box-shadow:0 0 0 2px rgba(0,224,138,.15)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button{font-family:inherit;font-weight:700;cursor:pointer;border:none;border-radius:6px;
+    padding:11px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;transition:.15s;width:100%}
+  .btn-go{background:var(--green);color:#04130c;margin-top:16px}
+  .btn-go:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .btn-go:disabled{opacity:.4;cursor:wait;transform:none}
+  .btn-start{background:var(--cyan);color:#04130c}
+  .btn-stop{background:var(--red);color:#fff}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .metric{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .metric .v{font-size:22px;font-weight:800;font-family:'Space Grotesk',sans-serif}
+  .metric .k{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+  .pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--amber)}
+  .chart-box{position:relative;height:280px;margin-bottom:18px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--dim);font-weight:500;font-size:10px;text-transform:uppercase;
+    letter-spacing:1px;padding:8px;border-bottom:1px solid var(--line)}
+  td{padding:8px;border-bottom:1px solid var(--panel2)}
+  .tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+  .tag.LONG{background:rgba(0,224,138,.15);color:var(--green)}
+  .tag.SHORT{background:rgba(255,84,112,.15);color:var(--red)}
+  .scroll{max-height:220px;overflow:auto}
+  .term{background:#060a0b;border:1px solid var(--line);border-radius:8px;padding:12px;
+    height:200px;overflow:auto;font-size:11.5px;color:var(--dim);white-space:pre-wrap}
+  .term .ln{padding:1px 0}
+  .status{display:flex;align-items:center;gap:8px;font-size:12px}
+  .led{width:9px;height:9px;border-radius:50%;background:var(--dim)}
+  .led.on{background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 1.5s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .warn{background:rgba(255,194,75,.1);border:1px solid rgba(255,194,75,.3);color:var(--amber);
+    padding:10px 12px;border-radius:6px;font-size:11.5px;margin-top:14px;line-height:1.5}
+  .tabs{display:flex;gap:6px;margin-bottom:18px}
+  .tab{flex:1;text-align:center;padding:9px;border:1px solid var(--line);border-radius:6px;
+    cursor:pointer;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+  .tab.active{background:var(--panel2);color:var(--green);border-color:var(--green)}
+  .hidden{display:none}
+  .spin{display:inline-block;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+  .params-box{background:rgba(13,19,22,.6);border:1px solid var(--line);border-radius:8px;
+    padding:12px;margin-top:10px}
+  .params-box .ph{color:var(--cyan);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;
+    margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .params-box .ph::before{content:"⚙";font-size:11px}
+  .params-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+  .param-bool{display:flex;align-items:center;gap:8px;padding:6px 0}
+  .param-bool input[type=checkbox]{width:auto;accent-color:var(--green)}
+  .param-bool label{margin:0;font-size:11px;color:var(--dim);text-transform:none;letter-spacing:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>profitprobe<span class="dot">.</span>bot</h1>
+      <div class="sub">Binance USDⓈ-M Futures · Risk-First Engine</div>
+    </div>
+    <div class="status"><span class="led" id="led"></span><span id="statusTxt">idle</span></div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="bt">Backtest</div>
+          <div class="tab" data-tab="live">Run Bot</div>
+        </div>
+
+        <!-- backtest panel -->
+        <div id="panel-bt">
+          <label>Strategy</label>
+          <select id="bt-strategy"></select>
+          <div id="bt-params"></div>
+          <div class="row">
+            <div><label>Pair</label><input id="bt-pair" value="BTCUSDT"></div>
+            <div><label>Interval</label>
+              <select id="bt-interval"><option>15m</option><option selected>1h</option><option>4h</option><option>1d</option></select>
+            </div>
+          </div>
+          <div class="row">
+            <div><label>Candles</label><input id="bt-limit" type="number" value="1000"></div>
+            <div><label>Leverage</label><input id="bt-lev" type="number" value="3"></div>
+          </div>
+          <label>Start Equity (USDT)</label><input id="bt-eq" type="number" value="1000">
+          <button class="btn-go" id="bt-run">Run Backtest</button>
+        </div>
+
+        <!-- live panel -->
+        <div id="panel-live" class="hidden">
+          <label>Mode</label>
+          <select id="lv-mode"><option value="paper">Paper (Testnet)</option><option value="live">Live (Real Money)</option></select>
+          <label>Strategy</label><select id="lv-strategy"></select>
+          <div id="lv-params"></div>
+          <div class="row">
+            <div><label>Pair</label><input id="lv-pair" value="BTCUSDT"></div>
+            <div><label>Interval</label>
+              <select id="lv-interval"><option selected>15m</option><option>1h</option><option>4h</option></select>
+            </div>
+          </div>
+          <label>Leverage</label><input id="lv-lev" type="number" value="3">
+          <button class="btn-start" id="lv-start" style="margin-top:16px">▶ Start Bot</button>
+          <button class="btn-stop hidden" id="lv-stop" style="margin-top:8px">■ Stop Bot</button>
+          <div class="warn">Live mode trades real funds. Stops are placed on the exchange. Always test on paper first. Set API keys via env vars before starting.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h2>Risk Controls</h2>
+        <div class="row">
+          <div><label>Risk / Trade</label><input id="r-risk" type="number" step="0.005" value="0.01"></div>
+          <div><label>Max Leverage</label><input id="r-lev" type="number" value="5"></div>
+        </div>
+        <div class="row">
+          <div><label>Max Positions</label><input id="r-pos" type="number" value="3"></div>
+          <div><label>Daily Loss Lim</label><input id="r-day" type="number" step="0.01" value="0.05"></div>
+        </div>
+        <label>Max Drawdown (kill-switch)</label><input id="r-dd" type="number" step="0.01" value="0.20">
+        <button class="btn-ghost" id="r-save" style="margin-top:14px">Save Risk Config</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <div class="card">
+        <h2>Performance</h2>
+        <div class="metrics" id="metrics">
+          <div class="metric"><div class="v neu" id="m-ret">—</div><div class="k">Return</div></div>
+          <div class="metric"><div class="v" id="m-wr">—</div><div class="k">Win Rate</div></div>
+          <div class="metric"><div class="v" id="m-pf">—</div><div class="k">Profit Factor</div></div>
+          <div class="metric"><div class="v" id="m-trades">—</div><div class="k">Trades</div></div>
+          <div class="metric"><div class="v neg" id="m-dd">—</div><div class="k">Max DD</div></div>
+          <div class="metric"><div class="v" id="m-eq">—</div><div class="k">End Equity</div></div>
+        </div>
+        <div class="chart-box"><canvas id="equityChart"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:20px" id="liveCard">
+        <h2>Live Log</h2>
+        <div class="term" id="term"><span class="ln" style="color:var(--green)">› engine ready. run a backtest or start the bot.</span></div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h2>Trades</h2>
+        <div class="scroll">
+          <table><thead><tr><th>Side</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Reason</th></tr></thead>
+          <tbody id="trades"><tr><td colspan="5" style="color:var(--dim);text-align:center;padding:20px">No trades yet</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let chart, pollTimer, saveTimer;
+let strategyMap = {};
+
+// ---- tab switching -------------------------------------------------------
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $('#panel-bt').classList.toggle('hidden', t.dataset.tab !== 'bt');
+  $('#panel-live').classList.toggle('hidden', t.dataset.tab !== 'live');
+});
+
+// ---- strategy params rendering -------------------------------------------
+function renderParams(stratName, containerId, savedVals){
+  const params = strategyMap[stratName] || {};
+  const keys = Object.keys(params);
+  const box = $(containerId);
+  if(!keys.length){ box.innerHTML=''; return; }
+
+  const bools = keys.filter(k => typeof params[k] === 'boolean');
+  const nums  = keys.filter(k => typeof params[k] !== 'boolean');
+  const vals  = savedVals || {};
+
+  let html = `<div class="params-box"><div class="ph">Strategy Parameters</div><div class="params-grid">`;
+  nums.forEach(k => {
+    const v = k in vals ? vals[k] : params[k];
+    // Special handling for 'mode' param - show as dropdown
+    if (k === 'mode') {
+      html += `<div><label>mode</label>
+        <select data-param="mode" class="param-input param-select">
+          <option value="0" ${v === 0 || v === 'reversion' ? 'selected' : ''}>reversion</option>
+          <option value="1" ${v === 1 || v === 'breakout' ? 'selected' : ''}>breakout</option>
+        </select></div>`;
+    } else {
+      const step = Number.isInteger(params[k]) ? '1' : '0.01';
+      html += `<div><label>${k.replace(/_/g,' ')}</label>
+        <input type="number" step="${step}" value="${v}" data-param="${k}" class="param-input"></div>`;
+    }
+  });
+  if(bools.length){
+    html += `</div>`;
+    bools.forEach(k => {
+      const checked = k in vals ? vals[k] : params[k];
+      html += `<div class="param-bool">
+        <input type="checkbox" id="p-${containerId.replace('#','')}-${k}" data-param="${k}"
+          class="param-input" ${checked?'checked':''}>
+        <label for="p-${containerId.replace('#','')}-${k}">${k.replace(/_/g,' ')}</label></div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `</div></div>`;
+  }
+  box.innerHTML = html;
+  // wire param changes → auto-save
+  box.querySelectorAll('.param-input').forEach(el => el.addEventListener('change', scheduleAutoSave));
+}
+
+function collectParams(containerId){
+  const params = {};
+  document.querySelectorAll(`${containerId} .param-input`).forEach(el => {
+    if (el.classList.contains('param-select')) {
+      params[el.dataset.param] = +el.value;  // 0 or 1
+    } else if (el.type === 'checkbox') {
+      params[el.dataset.param] = el.checked;
+    } else {
+      params[el.dataset.param] = +el.value;
+    }
+  });
+  return params;
+}
+
+// ---- state persistence ---------------------------------------------------
+function collectUiState(){
+  return {
+    bt_strategy:      $('#bt-strategy').value,
+    bt_pair:          $('#bt-pair').value,
+    bt_interval:      $('#bt-interval').value,
+    bt_limit:         +$('#bt-limit').value,
+    bt_leverage:      +$('#bt-lev').value,
+    bt_equity:        +$('#bt-eq').value,
+    bt_params:        collectParams('#bt-params'),
+    lv_mode:          $('#lv-mode').value,
+    lv_strategy:      $('#lv-strategy').value,
+    lv_pair:          $('#lv-pair').value,
+    lv_interval:      $('#lv-interval').value,
+    lv_leverage:      +$('#lv-lev').value,
+    lv_params:        collectParams('#lv-params'),
+    risk_per_trade:   +$('#r-risk').value,
+    max_leverage:     +$('#r-lev').value,
+    max_positions:    +$('#r-pos').value,
+    daily_loss_limit: +$('#r-day').value,
+    max_drawdown:     +$('#r-dd').value,
+  };
+}
+
+function scheduleAutoSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    await fetch('/api/ui-state', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({state: collectUiState()})});
+  }, 600);
+}
+
+// ---- load strategies + restore saved state --------------------------------
+async function loadStrategies(){
+  const [stratResp, stateResp] = await Promise.all([
+    fetch('/api/strategies'),
+    fetch('/api/ui-state'),
+  ]);
+  const list  = await stratResp.json();
+  const saved = await stateResp.json();
+
+  list.forEach(s => { strategyMap[s.name] = s.params; });
+
+  ['#bt-strategy','#lv-strategy'].forEach(sel => {
+    $(sel).innerHTML = list.map(s =>
+      `<option value="${s.name}">${s.name.replace(/_/g,' ')}</option>`).join('');
+  });
+
+  // helper: set element value if defined
+  const sv = (id, v) => { const el=$(id); if(el && v!==undefined && v!==null) el.value=v; };
+
+  // Backtest tab
+  sv('#bt-strategy', saved.bt_strategy);
+  sv('#bt-pair',     saved.bt_pair);
+  sv('#bt-interval', saved.bt_interval);
+  sv('#bt-limit',    saved.bt_limit);
+  sv('#bt-lev',      saved.bt_leverage);
+  sv('#bt-eq',       saved.bt_equity);
+
+  // Live tab
+  sv('#lv-mode',     saved.lv_mode);
+  sv('#lv-strategy', saved.lv_strategy);
+  sv('#lv-pair',     saved.lv_pair);
+  sv('#lv-interval', saved.lv_interval);
+  sv('#lv-lev',      saved.lv_leverage);
+
+  // Risk controls
+  sv('#r-risk', saved.risk_per_trade);
+  sv('#r-lev',  saved.max_leverage);
+  sv('#r-pos',  saved.max_positions);
+  sv('#r-day',  saved.daily_loss_limit);
+  sv('#r-dd',   saved.max_drawdown);
+
+  // Render params with saved overrides
+  renderParams($('#bt-strategy').value, '#bt-params', saved.bt_params);
+  renderParams($('#lv-strategy').value, '#lv-params', saved.lv_params);
+
+  // Wire strategy change → re-render params (reset to defaults on strategy switch)
+  $('#bt-strategy').onchange = () => { renderParams($('#bt-strategy').value, '#bt-params'); scheduleAutoSave(); };
+  $('#lv-strategy').onchange = () => { renderParams($('#lv-strategy').value, '#lv-params'); scheduleAutoSave(); };
+
+  // Auto-save on any input/select change
+  document.querySelectorAll('input:not(.param-input), select').forEach(el =>
+    el.addEventListener('change', scheduleAutoSave));
+}
+
+// ---- chart ---------------------------------------------------------------
+function initChart(){
+  const ctx = $('#equityChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,280);
+  grad.addColorStop(0,'rgba(0,224,138,.35)'); grad.addColorStop(1,'rgba(0,224,138,0)');
+  chart = new Chart(ctx,{type:'line',data:{labels:[],datasets:[{
+    data:[],borderColor:'#00e08a',backgroundColor:grad,borderWidth:2,
+    fill:true,pointRadius:0,tension:.25}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{grid:{color:'#1d2a2f'},
+        ticks:{color:'#6b8389',font:{family:'JetBrains Mono',size:10}}}}}});
+}
+
+function setColorClass(el,val){el.classList.remove('pos','neg','neu');
+  el.classList.add(val>0?'pos':val<0?'neg':'neu');}
+
+// ---- backtest ------------------------------------------------------------
+$('#bt-run').onclick = async () => {
+  const btn = $('#bt-run'); btn.disabled = true;
+  btn.innerHTML = '<span class="spin">◠</span> Running…';
+  scheduleAutoSave();
+  try{
+    const body = {strategy:$('#bt-strategy').value, pair:$('#bt-pair').value.toUpperCase(),
+      interval:$('#bt-interval').value, limit:+$('#bt-limit').value,
+      leverage:+$('#bt-lev').value, start_equity:+$('#bt-eq').value,
+      params:collectParams('#bt-params')};
+    const r = await fetch('/api/backtest',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.error){alert(d.error); return;}
+    const s = d.summary;
+    $('#m-ret').textContent = s.return_pct+'%'; setColorClass($('#m-ret'),s.return_pct);
+    $('#m-wr').textContent  = (s.win_rate*100).toFixed(0)+'%';
+    $('#m-pf').textContent  = s.profit_factor === null ? '∞' : s.profit_factor;
+    $('#m-trades').textContent = s.trades;
+    $('#m-dd').textContent  = s.max_drawdown_pct+'%';
+    $('#m-eq').textContent  = '$'+s.end_equity;
+    chart.data.labels = d.equity_curve.map((_,i)=>i);
+    chart.data.datasets[0].data = d.equity_curve; chart.update();
+    $('#trades').innerHTML = d.trades.length
+      ? d.trades.map(t =>
+          `<tr><td><span class="tag ${t.side}">${t.side}</span></td><td>${t.entry}</td>
+           <td>${t.exit}</td><td class="${t.pnl>0?'pos':'neg'}">${t.pnl>0?'+':''}${t.pnl}</td>
+           <td style="color:var(--dim)">${t.reason}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:20px">No trades generated</td></tr>';
+  }catch(e){alert('Request failed: '+e);}
+  finally{btn.disabled=false; btn.textContent='Run Backtest';}
+};
+
+// ---- risk config (persists to config.yaml via server) --------------------
+$('#r-save').onclick = async () => {
+  const body = {risk_per_trade:+$('#r-risk').value, max_leverage:+$('#r-lev').value,
+    max_positions:+$('#r-pos').value, daily_loss_limit:+$('#r-day').value,
+    max_drawdown:+$('#r-dd').value, min_notional:5};
+  await fetch('/api/config',{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  // also persist UI state so risk fields survive reload
+  clearTimeout(saveTimer);
+  await fetch('/api/ui-state',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({state: collectUiState()})});
+  $('#r-save').textContent='✓ Saved';
+  setTimeout(()=>$('#r-save').textContent='Save Risk Config', 1500);
+};
+
+// ---- bot start/stop ------------------------------------------------------
+$('#lv-start').onclick = async () => {
+  if($('#lv-mode').value==='live' && !confirm('LIVE mode trades REAL money. Continue?')) return;
+  scheduleAutoSave();
+  const body = {mode:$('#lv-mode').value, strategy:$('#lv-strategy').value,
+    pair:$('#lv-pair').value.toUpperCase(), interval:$('#lv-interval').value,
+    leverage:+$('#lv-lev').value, params:collectParams('#lv-params')};
+  const r = await fetch('/api/bot/start',{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const d = await r.json();
+  if(d.error){alert(d.error);return;}
+  startPolling();
+};
+
+$('#lv-stop').onclick = async () => {
+  await fetch('/api/bot/stop',{method:'POST'});
+};
+
+// ---- status polling ------------------------------------------------------
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async ()=>{
+    const r = await fetch('/api/bot/status'); const d = await r.json();
+    $('#led').classList.toggle('on',d.running);
+    $('#statusTxt').textContent = d.running ? (d.mode+' · running') : 'idle';
+    if(d.running){
+      $('#statusTxt').style.color = d.mode==='live' ? 'var(--red)' : 'var(--green)';
+    } else {
+      $('#statusTxt').style.color = 'var(--dim)';
+    }
+    $('#lv-stop').classList.toggle('hidden', !d.running);
+    $('#lv-start').classList.toggle('hidden', d.running);
+    if(d.log){ $('#term').innerHTML = d.log.map(l=>`<div class="ln">${l}</div>`).join('');
+      $('#term').scrollTop = $('#term').scrollHeight; }
+    if(d.account && d.account.equity!==undefined){
+      $('#m-eq').textContent='$'+d.account.equity;
+      $('#m-trades').textContent=d.account.positions+' open';
+    }
+  },3000);
+}
+
+loadStrategies(); initChart(); startPolling();
+</script>
+</body>
+</html>
