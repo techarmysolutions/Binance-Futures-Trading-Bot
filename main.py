@@ -24,6 +24,7 @@ STRATEGY_REGISTRY = {
     "donchian_breakout":  ("strategies.donchian_breakout",  "DonchianBreakout"),
     "vwap_reversion":     ("strategies.vwap_reversion",     "VwapReversion"),
     "vrvp_poc":           ("strategies.vrvp_poc",           "VrvpPoc"),
+    "scalper":            ("strategies.scalper",            "Scalper"),
 }
 
 

@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from config.settings import load_config, risk_from_config
 from main import STRATEGY_REGISTRY, load_strategy
 from risk.manager import RiskManager, RiskConfig
+from core.models import AccountState
 
 app = FastAPI(title="Futures Bot")
 
@@ -92,6 +93,11 @@ DEFAULT_PARAMS = {
         "mode": "reversion", "vwap_filter": True,
         "rsi_period": 14, "rsi_overbought": 70, "rsi_oversold": 30,
         "atr_period": 14, "atr_mult": 2.0, "risk_reward": 2.0,
+    },
+    "scalper": {
+        "ema_fast": 8, "ema_slow": 21,
+        "rsi_period": 14, "rsi_overbought": 70, "rsi_oversold": 30,
+        "atr_period": 14, "atr_mult": 1.5, "risk_reward": 1.5,
     },
 }
 
@@ -268,6 +274,7 @@ def _bot_loop(req: BotReq):
         params["mode"] = "reversion" if params["mode"] == 0 else "breakout"
     strat = load_strategy(req.strategy, params)
     risk = RiskManager(STATE["risk"])
+    risk.reset_day(AccountState())  # Reset killswitch on fresh start
     ex = BinanceFutures(cfg["api_key"], cfg["api_secret"], testnet=(req.mode == "paper"))
     engine = TradingEngine(ex, strat, risk, req.pair, req.interval, req.leverage, logger=log)
 
